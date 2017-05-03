@@ -159,7 +159,7 @@ func getContent(cc echo.Context) error {
 				}
 			}
 			header["User-Agent"] = random_user_agent(is_mobile)
-			data, err := HttpPOSTWithHeader(url, method_data, header, cookies, proxy)
+			data, err := HttpPOSTWithHeader(url, params_post, header, cookies, proxy)
 			fmt.Println(err)
 			return c.HTML(http.StatusOK, string(data))
 		}
