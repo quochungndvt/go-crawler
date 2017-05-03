@@ -1,11 +1,13 @@
 package main
 
 import (
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"github.com/gorilla/schema"
 	"github.com/labstack/echo"
 	"io/ioutil"
+	"log"
 	"math/rand"
 	"net/http"
 	"net/url"
@@ -40,6 +42,8 @@ func main() {
 type CustomContext struct {
 	echo.Context
 	request_body []byte
+	request_form url.Values
+	method       string
 }
 type RequestData struct {
 	Url         string
@@ -66,12 +70,12 @@ func getContent(cc echo.Context) error {
 	if err_require != nil {
 		return c.responseJson(err_require, nil)
 	}
-	method := c.Request().Method
-	if method == echo.POST {
+	if c.method == echo.POST {
 		var request RequestData
 		if err := c.parseRequest(&request); err != nil {
 			return c.responseJson(err, nil)
 		}
+		fmt.Println("request", request)
 		var params_post string
 		header := make(map[string]string)
 		cookies := []*http.Cookie{}
@@ -115,7 +119,7 @@ func getContent(cc echo.Context) error {
 		data, err := HttpPOSTWithHeader(request.Url, params_post, header, cookies, request.Proxy)
 		fmt.Println(err)
 		return c.HTML(http.StatusOK, string(data))
-	} else if method == echo.GET {
+	} else if c.method == echo.GET {
 		var (
 			test        string
 			url         string
@@ -167,10 +171,16 @@ func getContent(cc echo.Context) error {
 
 	return nil
 }
-func (c *CustomContext) DoRequire(require ...string) error {
+func (c *CustomContext) DoRequire() error {
 	var (
 		err error
 	)
+	err = c.Request().ParseForm()
+	if err != nil {
+		return c.responseJson(err, nil)
+	}
+	c.request_form = c.Request().Form
+	c.method = c.Request().Method
 	request_body := c.Request().Body
 	c.request_body, err = ioutil.ReadAll(request_body)
 	if err != nil {
@@ -180,20 +190,19 @@ func (c *CustomContext) DoRequire(require ...string) error {
 	return nil
 }
 func (c *CustomContext) parseRequest(req ...interface{}) error {
+	var (
+		err error
+	)
 	for _, v := range req {
 		if isJSON(string(c.request_body)) {
-			if err := json.Unmarshal(c.request_body, v); err != nil {
+			if err = json.Unmarshal(c.request_body, v); err != nil {
+				log.Println("parseRequest", err)
 				return err
 			}
 		} else {
-
-			err := c.Request().ParseForm()
-			if err != nil {
-				return err
-			}
 			decoder := schema.NewDecoder()
-			err = decoder.Decode(v, c.Request().Form)
-			if err != nil {
+			if err = decoder.Decode(v, c.request_form); err != nil {
+				log.Println("parseRequest", err)
 				return err
 			}
 		}
@@ -724,18 +733,17 @@ func HttpPOSTWithHeader(requestURL string, params string, headers map[string]str
 		}
 	}
 	var client *http.Client
+	client = &http.Client{}
 	if len(proxy) > 0 {
 		proxyUrl, err := url.Parse(fmt.Sprintf("http://%s", proxy))
 		if err == nil {
-			client = &http.Client{Transport: &http.Transport{Proxy: http.ProxyURL(proxyUrl)}}
-		} else {
-			client = &http.Client{}
+			transport := &http.Transport{}
+			transport.Proxy = http.ProxyURL(proxyUrl)                         // set proxy
+			transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true} //set ssl
+			client.Transport = transport
 		}
-	} else {
-		client = &http.Client{}
 	}
 	resp, err := client.Do(req)
-	defer resp.Body.Close()
 	if err != nil {
 		return []byte{}, err
 	}
