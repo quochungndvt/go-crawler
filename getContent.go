@@ -72,7 +72,6 @@ func getContent(cc echo.Context) error {
 		if err := c.parseRequest(&request); err != nil {
 			return c.responseJson(err, nil)
 		}
-		fmt.Println("request", request)
 		var params_post string
 		header := make(map[string]string)
 		cookies := []*http.Cookie{}
@@ -113,7 +112,6 @@ func getContent(cc echo.Context) error {
 
 		}
 		header["User-Agent"] = random_user_agent(is_mobile)
-		fmt.Println("HttpPOSTWithHeader", request.Url, params_post, header, cookies, request.Proxy)
 		data, err := HttpPOSTWithHeader(request.Url, params_post, header, cookies, request.Proxy)
 		fmt.Println(err)
 		return c.HTML(http.StatusOK, string(data))
@@ -161,7 +159,6 @@ func getContent(cc echo.Context) error {
 				}
 			}
 			header["User-Agent"] = random_user_agent(is_mobile)
-			fmt.Println("HttpPOSTWithHeader", url, params_post, header, cookies, proxy)
 			data, err := HttpPOSTWithHeader(url, method_data, header, cookies, proxy)
 			fmt.Println(err)
 			return c.HTML(http.StatusOK, string(data))
@@ -175,12 +172,8 @@ func (c *CustomContext) DoRequire(require ...string) error {
 		err error
 	)
 	request_body := c.Request().Body
-	v, e := c.FormParams()
-	fmt.Println("_____", v, e)
 	c.request_body, err = ioutil.ReadAll(request_body)
-	fmt.Println("request_body", string(c.request_body))
 	if err != nil {
-		fmt.Println("request_body", err)
 		return c.responseJson(err, nil)
 	}
 	defer request_body.Close()
