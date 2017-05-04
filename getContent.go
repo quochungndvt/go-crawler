@@ -59,7 +59,7 @@ func test(cc echo.Context) error {
 		return c.responseJson(err_require, nil)
 	}
 	//HttpPostForm(crawlerUrl, url.Values{URL: {requestUrl}, COOKIE: {cookie}, METHOD_DATA: {req.Method_data}, PROXY: {proxy_str}})
-	data, err := HttpPostForm("http://localhost:1323/getContent", url.Values{"url": {"http://batdongsan.com.vn/ban-nha-rieng-duong-tan-tru-phuong-15-8/hem-xe-hoi-p-q-binh-dt-4mx14m-pr12209675"}, "cookie": {""}, "method_data": {""}, "proxy": {""}})
+	data, err := HttpPostForm("http://localhost:1323/getContent", url.Values{"url": {"https://gateway.chotot.com/v1/public/ad-listing/33113277"}, "cookie": {""}, "method_data": {""}, "proxy": {""}})
 	fmt.Println(err)
 	return c.HTML(http.StatusOK, string(data))
 
@@ -70,6 +70,10 @@ func getContent(cc echo.Context) error {
 	if err_require != nil {
 		return c.responseJson(err_require, nil)
 	}
+	var (
+		data []byte
+		err  error
+	)
 	if c.method == echo.POST {
 		var request RequestData
 		if err := c.parseRequest(&request); err != nil {
@@ -80,7 +84,9 @@ func getContent(cc echo.Context) error {
 		header := make(map[string]string)
 		cookies := []*http.Cookie{}
 		is_mobile := false
+		is_post := false
 		if request.Method_data != "" {
+			is_post = true
 			if !isJSON(request.Method_data) {
 				params := url.Values{}
 				method_post_arr := strings.Split(request.Method_data, "&")
@@ -116,7 +122,12 @@ func getContent(cc echo.Context) error {
 
 		}
 		header["User-Agent"] = random_user_agent(is_mobile)
-		data, err := HttpPOSTWithHeader(request.Url, params_post, header, cookies, request.Proxy)
+		if is_post {
+			data, err = HttpPOSTWithHeader(request.Url, params_post, header, cookies, request.Proxy)
+		} else {
+			data, err = HttpGetWithHeader(request.Url, header, cookies, request.Proxy)
+		}
+
 		fmt.Println(err)
 		return c.HTML(http.StatusOK, string(data))
 	} else if c.method == echo.GET {
@@ -163,7 +174,7 @@ func getContent(cc echo.Context) error {
 				}
 			}
 			header["User-Agent"] = random_user_agent(is_mobile)
-			data, err := HttpPOSTWithHeader(url, params_post, header, cookies, proxy)
+			data, err = HttpPOSTWithHeader(url, params_post, header, cookies, proxy)
 			fmt.Println(err)
 			return c.HTML(http.StatusOK, string(data))
 		}
@@ -719,7 +730,46 @@ func HttpPostForm(url string, params url.Values) ([]byte, error) {
 	}
 	return data, nil
 }
+func HttpGetWithHeader(requestURL string, headers map[string]string, cookies []*http.Cookie, proxy string) ([]byte, error) {
+	log.Println("HttpGetWithHeader", requestURL, headers, cookies, proxy)
+	req, err := http.NewRequest("GET", requestURL, nil)
+	if len(headers) > 0 {
+		for k, v := range headers {
+			req.Header.Add(k, v)
+		}
+	}
+	if len(cookies) > 0 {
+		for _, cookie := range cookies {
+			req.AddCookie(cookie)
+		}
+	}
+
+	var client *http.Client
+	client = &http.Client{}
+	if len(proxy) > 0 {
+		proxyUrl, err := url.Parse(fmt.Sprintf("http://%s", proxy))
+		if err == nil {
+			transport := &http.Transport{}
+			transport.Proxy = http.ProxyURL(proxyUrl)                         // set proxy
+			transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true} //set ssl
+			client.Transport = transport
+		}
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return []byte{}, err
+	}
+	defer resp.Body.Close()
+	data, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return []byte{}, err
+	}
+	return data, nil
+}
+
 func HttpPOSTWithHeader(requestURL string, params string, headers map[string]string, cookies []*http.Cookie, proxy string) ([]byte, error) {
+	log.Println("HttpPOSTWithHeader", requestURL, params, headers, cookies, proxy)
 	req, err := http.NewRequest("POST", requestURL, strings.NewReader(params))
 
 	if len(headers) > 0 {
@@ -743,10 +793,12 @@ func HttpPOSTWithHeader(requestURL string, params string, headers map[string]str
 			client.Transport = transport
 		}
 	}
+
 	resp, err := client.Do(req)
 	if err != nil {
 		return []byte{}, err
 	}
+	defer resp.Body.Close()
 	data, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return []byte{}, err
