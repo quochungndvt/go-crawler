@@ -89,8 +89,6 @@ func getContent(cc echo.Context) error {
 		cookies := []*http.Cookie{}
 		is_mobile := false
 		is_post := false
-		fmt.Println("______________", request.Method_data)
-		log.Println("______________", request.Method_data)
 		if request.Method_data != "" {
 			is_post = true
 			if !isJSON(request.Method_data) {
@@ -796,7 +794,6 @@ func HttpGetWithHeader(requestURL string, headers map[string]string, cookies []*
 	if len(proxy) > 0 {
 		if strings.Contains(proxy, "sock5://") {
 			proxy = proxy[8:]
-			log.Println("________________________", proxy)
 			sock_proxy := &socks.Proxy{Addr: proxy}
 
 			// transport := &http.Transport{
@@ -875,12 +872,9 @@ func HttpPOSTWithHeader(requestURL string, params string, headers map[string]str
 		Transport: defaultTransport,
 		Timeout:   timeout,
 	}
-
-	log.Println("+++++++++++++++++++++++++++++++++++++++")
 	if len(proxy) > 0 {
 		if strings.Contains(proxy, "sock5://") {
 			proxy = proxy[8:]
-			log.Println("________________________", proxy)
 			sock_proxy := &socks.Proxy{Addr: proxy}
 			defaultTransport = &http.Transport{
 				Dial:                sock_proxy.Dial,
