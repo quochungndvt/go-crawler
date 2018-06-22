@@ -6,13 +6,16 @@ import (
 	"fmt"
 	"github.com/gorilla/schema"
 	"github.com/labstack/echo"
+	"github.com/samuel/go-socks/socks"
 	"io/ioutil"
 	"log"
 	"math/rand"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
 	"strings"
+	"time"
 )
 
 func main() {
@@ -50,6 +53,7 @@ type RequestData struct {
 	Method_data string
 	Cookie      string
 	Proxy       string
+	Get_link    string `json:"get_link"`
 }
 
 func test(cc echo.Context) error {
@@ -85,6 +89,8 @@ func getContent(cc echo.Context) error {
 		cookies := []*http.Cookie{}
 		is_mobile := false
 		is_post := false
+		fmt.Println("______________", request.Method_data)
+		log.Println("______________", request.Method_data)
 		if request.Method_data != "" {
 			is_post = true
 			if !isJSON(request.Method_data) {
@@ -104,6 +110,9 @@ func getContent(cc echo.Context) error {
 				params_post = request.Method_data
 				header["Content-Type"] = "application/json"
 			}
+		}
+		if request.Get_link != "" {
+			//TODO support get link 301
 		}
 		if request.Cookie != "" {
 			if strings.Contains(request.Cookie, "User-Agent") {
@@ -133,17 +142,18 @@ func getContent(cc echo.Context) error {
 	} else if c.method == echo.GET {
 		var (
 			test        string
-			url         string
+			url_request string
 			method_data string
 			cookie      string
 			proxy       string
 			params_post string
 			is_mobile   bool
+			is_post     bool
 		)
 		test = c.QueryParam("test")
-		url = c.QueryParam("url")
-		if url == "" {
-			url = `http://batdongsan.com.vn/nha-dat-ban`
+		url_request = c.QueryParam("url")
+		if url_request == "" {
+			url_request = `http://batdongsan.com.vn/nha-dat-ban`
 		}
 		method_data = c.QueryParam("method_data")
 		cookie = c.QueryParam("cookie")
@@ -152,12 +162,25 @@ func getContent(cc echo.Context) error {
 			header := make(map[string]string)
 			cookies := []*http.Cookie{}
 
-			if !isJSON(method_data) {
-				params_post = method_data
-				header["Content-Type"] = "application/x-www-form-urlencoded"
-			} else {
-				params_post = method_data
-				header["Content-Type"] = "application/json"
+			if method_data != "" {
+				is_post = true
+				if !isJSON(method_data) {
+					params := url.Values{}
+					method_post_arr := strings.Split(method_data, "&")
+					for _, v := range method_post_arr {
+						kv := strings.Split(v, "=")
+						if len(kv) > 0 {
+							params[string(kv[0])] = []string{string(v[len(kv[0])+1:])}
+						} else {
+							params[string(v)] = []string{""}
+						}
+					}
+					params_post = params.Encode()
+					header["Content-Type"] = "application/x-www-form-urlencoded"
+				} else {
+					params_post = method_data
+					header["Content-Type"] = "application/json"
+				}
 			}
 			if cookie != "" {
 				if strings.Contains(cookie, "User-Agent") {
@@ -174,8 +197,12 @@ func getContent(cc echo.Context) error {
 				}
 			}
 			header["User-Agent"] = random_user_agent(is_mobile)
-			data, err = HttpPOSTWithHeader(url, params_post, header, cookies, proxy)
-			fmt.Println(err)
+			if is_post {
+				data, err = HttpPOSTWithHeader(url_request, params_post, header, cookies, proxy)
+			} else {
+				data, err = HttpGetWithHeader(url_request, header, cookies, proxy)
+			}
+			fmt.Println("getContent: ", err)
 			return c.HTML(http.StatusOK, string(data))
 		}
 	}
@@ -193,11 +220,14 @@ func (c *CustomContext) DoRequire() error {
 	c.request_form = c.Request().Form
 	c.method = c.Request().Method
 	request_body := c.Request().Body
+	if request_body != nil {
+		defer request_body.Close() // MUST CLOSED THIS
+	}
 	c.request_body, err = ioutil.ReadAll(request_body)
 	if err != nil {
 		return c.responseJson(err, nil)
 	}
-	defer request_body.Close()
+
 	return nil
 }
 func (c *CustomContext) parseRequest(req ...interface{}) error {
@@ -706,12 +736,14 @@ func isJSON(s string) bool {
 
 }
 func HttpGet(url string) ([]byte, error) {
-	res, err := http.Get(url)
+	resp, err := http.Get(url)
+	if resp != nil {
+		defer resp.Body.Close() // MUST CLOSED THIS
+	}
 	if err != nil {
 		return []byte{}, err
 	}
-	defer res.Body.Close()
-	data, err := ioutil.ReadAll(res.Body)
+	data, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return []byte{}, err
 	}
@@ -719,12 +751,14 @@ func HttpGet(url string) ([]byte, error) {
 }
 
 func HttpPostForm(url string, params url.Values) ([]byte, error) {
-	res, err := http.PostForm(url, params)
+	resp, err := http.PostForm(url, params)
+	if resp != nil {
+		defer resp.Body.Close() // MUST CLOSED THIS
+	}
 	if err != nil {
 		return []byte{}, err
 	}
-	defer res.Body.Close()
-	data, err := ioutil.ReadAll(res.Body)
+	data, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return []byte{}, err
 	}
@@ -745,22 +779,65 @@ func HttpGetWithHeader(requestURL string, headers map[string]string, cookies []*
 	}
 
 	var client *http.Client
-	client = &http.Client{}
-	if len(proxy) > 0 {
-		proxyUrl, err := url.Parse(fmt.Sprintf("http://%s", proxy))
-		if err == nil {
-			transport := &http.Transport{}
-			transport.Proxy = http.ProxyURL(proxyUrl)                         // set proxy
-			transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true} //set ssl
-			client.Transport = transport
-		}
+	keepAliveTimeout := 600 * time.Second
+	IdleConnTimeout := 90 * time.Second
+	timeout := 60 * time.Second
+	defaultTransport := &http.Transport{
+		Dial:                (&net.Dialer{KeepAlive: keepAliveTimeout}).Dial,
+		MaxIdleConns:        100,
+		MaxIdleConnsPerHost: 100,
+		IdleConnTimeout:     IdleConnTimeout,
+	}
+	client = &http.Client{
+		Transport: defaultTransport,
+		Timeout:   timeout,
 	}
 
+	if len(proxy) > 0 {
+		if strings.Contains(proxy, "sock5://") {
+			proxy = proxy[8:]
+			log.Println("________________________", proxy)
+			sock_proxy := &socks.Proxy{Addr: proxy}
+
+			// transport := &http.Transport{
+			// 	Dial: sock_proxy.Dial,
+			// }
+			defaultTransport = &http.Transport{
+				Dial:                sock_proxy.Dial,
+				MaxIdleConns:        100,
+				MaxIdleConnsPerHost: 100,
+				IdleConnTimeout:     IdleConnTimeout,
+			}
+
+			//			transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true} //set ssl
+			//client = &http.Client{Transport: transport}
+
+		} else {
+			if !strings.Contains(proxy, "http") {
+				proxy = fmt.Sprintf("http://%s", proxy)
+			}
+			proxyUrl, err := url.Parse(proxy)
+			if err == nil {
+				defaultTransport = &http.Transport{
+					Dial:                (&net.Dialer{KeepAlive: keepAliveTimeout}).Dial,
+					MaxIdleConns:        100,
+					MaxIdleConnsPerHost: 100,
+					IdleConnTimeout:     IdleConnTimeout,
+					Proxy:               http.ProxyURL(proxyUrl),
+					TLSClientConfig:     &tls.Config{InsecureSkipVerify: true},
+				}
+			}
+		}
+
+	}
+	client.Transport = defaultTransport
 	resp, err := client.Do(req)
+	if resp != nil {
+		defer resp.Body.Close() // MUST CLOSED THIS
+	}
 	if err != nil {
 		return []byte{}, err
 	}
-	defer resp.Body.Close()
 	data, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return []byte{}, err
@@ -771,7 +848,9 @@ func HttpGetWithHeader(requestURL string, headers map[string]string, cookies []*
 func HttpPOSTWithHeader(requestURL string, params string, headers map[string]string, cookies []*http.Cookie, proxy string) ([]byte, error) {
 	log.Println("HttpPOSTWithHeader", requestURL, params, headers, cookies, proxy)
 	req, err := http.NewRequest("POST", requestURL, strings.NewReader(params))
-
+	if err != nil {
+		return []byte{}, err
+	}
 	if len(headers) > 0 {
 		for k, v := range headers {
 			req.Header.Add(k, v)
@@ -783,22 +862,61 @@ func HttpPOSTWithHeader(requestURL string, params string, headers map[string]str
 		}
 	}
 	var client *http.Client
-	client = &http.Client{}
-	if len(proxy) > 0 {
-		proxyUrl, err := url.Parse(fmt.Sprintf("http://%s", proxy))
-		if err == nil {
-			transport := &http.Transport{}
-			transport.Proxy = http.ProxyURL(proxyUrl)                         // set proxy
-			transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true} //set ssl
-			client.Transport = transport
-		}
+	keepAliveTimeout := 600 * time.Second
+	IdleConnTimeout := 90 * time.Second
+	timeout := 60 * time.Second
+	defaultTransport := &http.Transport{
+		Dial:                (&net.Dialer{KeepAlive: keepAliveTimeout}).Dial,
+		MaxIdleConns:        100,
+		MaxIdleConnsPerHost: 100,
+		IdleConnTimeout:     IdleConnTimeout,
+	}
+	client = &http.Client{
+		Transport: defaultTransport,
+		Timeout:   timeout,
 	}
 
+	log.Println("+++++++++++++++++++++++++++++++++++++++")
+	if len(proxy) > 0 {
+		if strings.Contains(proxy, "sock5://") {
+			proxy = proxy[8:]
+			log.Println("________________________", proxy)
+			sock_proxy := &socks.Proxy{Addr: proxy}
+			defaultTransport = &http.Transport{
+				Dial:                sock_proxy.Dial,
+				MaxIdleConns:        100,
+				MaxIdleConnsPerHost: 100,
+				IdleConnTimeout:     IdleConnTimeout,
+			}
+
+		} else {
+			if !strings.Contains(proxy, "http") {
+				proxy = fmt.Sprintf("http://%s", proxy)
+			}
+			proxyUrl, err := url.Parse(proxy)
+			if err == nil {
+				defaultTransport = &http.Transport{
+					Dial:                (&net.Dialer{KeepAlive: keepAliveTimeout}).Dial,
+					MaxIdleConns:        100,
+					MaxIdleConnsPerHost: 100,
+					IdleConnTimeout:     IdleConnTimeout,
+					Proxy:               http.ProxyURL(proxyUrl),
+					TLSClientConfig:     &tls.Config{InsecureSkipVerify: true},
+				}
+			}
+		}
+
+	}
+	client.Transport = defaultTransport
+	//TODO: add transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true} //set ssl
+
 	resp, err := client.Do(req)
+	if resp != nil {
+		defer resp.Body.Close() // MUST CLOSED THIS
+	}
 	if err != nil {
 		return []byte{}, err
 	}
-	defer resp.Body.Close()
 	data, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return []byte{}, err
