@@ -1,0 +1,80 @@
+{
+	"comment": "",
+	"ignore": "test",
+	"package": [
+		{
+			"checksumSHA1": "cvL7op40pYbwqjCJwPBvvHJUwwc=",
+			"path": "github.com/gorilla/schema",
+			"revision": "1c72d033473165ade8a126ba64180d76a9212dcd",
+			"revisionTime": "2017-04-12T15:14:24Z"
+		},
+		{
+			"checksumSHA1": "qtAcluAIJjkGXboRbdprrhHKfyE=",
+			"path": "github.com/labstack/echo",
+			"revision": "3641cbcdada3c75513ebb4d039de57333bfe413a",
+			"revisionTime": "2018-02-25T21:42:58Z"
+		},
+		{
+			"checksumSHA1": "Yz8nRvgJR9qN9OORCUQKc4eHC7Q=",
+			"path": "github.com/labstack/gommon/color",
+			"revision": "058e16e77bbd66cc101dfeae2971b88add6ce266",
+			"revisionTime": "2018-02-23T23:01:46Z"
+		},
+		{
+			"checksumSHA1": "S1Wzp79ca4Oxl85/BlV1lkV2X5U=",
+			"path": "github.com/labstack/gommon/log",
+			"revision": "058e16e77bbd66cc101dfeae2971b88add6ce266",
+			"revisionTime": "2018-02-23T23:01:46Z"
+		},
+		{
+			"checksumSHA1": "AtXpiR7Gtq5cF+6eUAH+LzupMts=",
+			"path": "github.com/mattn/go-colorable",
+			"revision": "efa589957cd060542a26d2dd7832fd6a6c6c3ade",
+			"revisionTime": "2018-03-10T13:32:14Z"
+		},
+		{
+			"checksumSHA1": "kum8izZy1+pVfDiApW5hT2HoH1w=",
+			"path": "github.com/mattn/go-isatty",
+			"revision": "6ca4dbf54d38eea1a992b3c722a76a5d1c4cb25c",
+			"revisionTime": "2017-11-07T05:05:31Z"
+		},
+		{
+			"checksumSHA1": "98WBs+5TUvkYA1chGIYY1b9RaG0=",
+			"path": "github.com/samuel/go-socks/socks",
+			"revision": "f6c5f6a06ef657d2b7b1f56a09a01de63381f665",
+			"revisionTime": "2013-07-25T19:01:02Z"
+		},
+		{
+			"checksumSHA1": "x6+Vi9WumwYUrK8ZUmkGLDgOLtc=",
+			"origin": "github.com/valyala/fasttemplate/vendor/github.com/valyala/bytebufferpool",
+			"path": "github.com/valyala/bytebufferpool",
+			"revision": "dcecefd839c4193db0d35b88ec65b4c12d360ab0",
+			"revisionTime": "2017-02-24T21:24:29Z"
+		},
+		{
+			"checksumSHA1": "UHztphFBVZKyLNbrMDVPM0VdJ60=",
+			"path": "github.com/valyala/fasttemplate",
+			"revision": "dcecefd839c4193db0d35b88ec65b4c12d360ab0",
+			"revisionTime": "2017-02-24T21:24:29Z"
+		},
+		{
+			"checksumSHA1": "1wzl062spqfhV985nlLdj/cngns=",
+			"path": "golang.org/x/crypto/acme",
+			"revision": "7f39a6fea4fe9364fb61e1def6a268a51b4f3a06",
+			"revisionTime": "2018-06-15T16:03:23Z"
+		},
+		{
+			"checksumSHA1": "JjpnjJabumVpCg8Sths68wWNv7Q=",
+			"path": "golang.org/x/crypto/acme/autocert",
+			"revision": "7f39a6fea4fe9364fb61e1def6a268a51b4f3a06",
+			"revisionTime": "2018-06-15T16:03:23Z"
+		},
+		{
+			"checksumSHA1": "A9K0sVrgRjO7ykKxgc5ciofXnQY=",
+			"path": "golang.org/x/sys/unix",
+			"revision": "fc8bd948cf46f9c7af0f07d34151ce25fe90e477",
+			"revisionTime": "2018-06-19T11:59:37Z"
+		}
+	],
+	"rootPath": "test/crawler"
+}
