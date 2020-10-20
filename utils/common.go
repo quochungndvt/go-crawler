@@ -3,7 +3,6 @@ package utils
 import (
 	"crypto/tls"
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"math/rand"
@@ -12,12 +11,12 @@ import (
 	"strings"
 )
 
+//IsJSON validate json
 func IsJSON(s string) bool {
-	var js map[string]interface{}
-	return json.Unmarshal([]byte(s), &js) == nil
-
+	return json.Valid([]byte(s))
 }
 
+//HttpGet make http request
 func HttpGet(url string) ([]byte, error) {
 	res, err := http.Get(url)
 	if err != nil {
@@ -60,10 +59,10 @@ func HttpGetWithHeader(requestURL string, headers map[string]string, cookies []*
 	var client *http.Client
 	client = &http.Client{}
 	if len(proxy) > 0 {
-		proxyUrl, err := url.Parse(proxy)
+		proxyURL, err := url.Parse(proxy)
 		if err == nil {
 			transport := &http.Transport{}
-			transport.Proxy = http.ProxyURL(proxyUrl)                         // set proxy
+			transport.Proxy = http.ProxyURL(proxyURL)                         // set proxy
 			transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true} //set ssl
 			client.Transport = transport
 		}
@@ -81,6 +80,7 @@ func HttpGetWithHeader(requestURL string, headers map[string]string, cookies []*
 	return data, nil
 }
 
+//HttpPOSTWithHeader post with header
 func HttpPOSTWithHeader(requestURL string, params string, headers map[string]string, cookies []*http.Cookie, proxy string) ([]byte, error) {
 	log.Println("HttpPOSTWithHeader", requestURL, params, headers, cookies, proxy)
 	req, err := http.NewRequest("POST", requestURL, strings.NewReader(params))
@@ -98,10 +98,10 @@ func HttpPOSTWithHeader(requestURL string, params string, headers map[string]str
 	var client *http.Client
 	client = &http.Client{}
 	if len(proxy) > 0 {
-		proxyUrl, err := url.Parse(proxy)
+		proxyURL, err := url.Parse(proxy)
 		if err == nil {
 			transport := &http.Transport{}
-			transport.Proxy = http.ProxyURL(proxyUrl)                         // set proxy
+			transport.Proxy = http.ProxyURL(proxyURL)                         // set proxy
 			transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true} //set ssl
 			client.Transport = transport
 		}
@@ -119,8 +119,9 @@ func HttpPOSTWithHeader(requestURL string, params string, headers map[string]str
 	return data, nil
 }
 
-func RandomUserAgent(is_mobile bool) string {
-	browser_strings_mobile := []string{
+//RandomUserAgent get random user agent
+func RandomUserAgent(isMobile bool) string {
+	browserStringsMobilego := []string{
 		"Mozilla/5.0 (SAMSUNG; SAMSUNG-GT-i9500/1.0; U; Tizen/1.0 like Android; en-us) AppleWebKit/534.46 (KHTML, like Gecko) SLP Browser/1.0 Mobile",
 		"Mozilla/5.0 (Linux; Android 4.0.3; GT-N7000 Build/IML74K) AppleWebKit/535.19 (KHTML, like Gecko) Chrome/18.0.1025.166 Mobile Safari/535.19",
 		"Mozilla/5.0 (Linux; Android 4.0.3; GT-N7000 Build/IML74K) AppleWebKit/535.19 (KHTML, like Gecko) Chrome/18.0.1025.166 Mobile Safari/535.19",
@@ -330,17 +331,17 @@ func RandomUserAgent(is_mobile bool) string {
 		"Mozilla/5.0 (iPhone; U; CPU iPhone OS 4_0 like Mac OS X; en-us) AppleWebKit/532.9 (KHTML, like Gecko) Version/4.0.5 Mobile/8A293 Safari/6531.22.7",
 		"Mozilla/5.0 (iPhone; U; CPU iPhone OS 4_3_5 like Mac OS X; en-us) AppleWebKit/533.17.9 (KHTML, like Gecko) Version/5.0.2 Mobile/8L1 Safari/6533.18.5",
 	}
-	if is_mobile == true {
-		return string(browser_strings_mobile[rand.Intn(len(browser_strings_mobile))])
+	if isMobile == true {
+		return string(browserStringsMobilego[rand.Intn(len(browserStringsMobilego))])
 	}
-	browser_freq := map[string]int{
+	browserFreq := map[string]int{
 		"Internet Explorer": 11,
 		"Firefox":           28,
 		"Chrome":            52,
 		"Safari":            4,
 	}
 
-	browser_strings := map[string][]string{
+	browserStrings := map[string][]string{
 		"Internet Explorer": []string{
 			"Mozilla/5.0 (compatible; MSIE 10.6; Windows NT 6.1; Trident/5.0; InfoPath.2; SLCC1; .NET CLR 3.0.4506.2152; .NET CLR 3.5.30729; .NET CLR 2.0.50727) 3gpp-gba UNTRUSTED/1.0",
 			"Mozilla/5.0 (compatible; MSIE 10.0; Windows NT 6.1; WOW64; Trident/6.0)",
@@ -559,23 +560,22 @@ func RandomUserAgent(is_mobile bool) string {
 		},
 	}
 	var (
-		max          int
-		rcount       int
-		browser_type string
+		max         int
+		rcount      int
+		browserType string
 	)
-	for _, v := range browser_freq {
+	for _, v := range browserFreq {
 		max = max + v
 		rcount = rcount + v
 	}
 	roll := rand.Intn(max)
-	for k, v := range browser_freq {
+	for k, v := range browserFreq {
 		rcount = rcount + v
-		if (roll < rcount) && browser_type == "" {
-			browser_type = k
+		if (roll < rcount) && browserType == "" {
+			browserType = k
 		}
 	}
-	user_agent_array := browser_strings[browser_type]
-	user_agent := user_agent_array[rand.Intn(len(user_agent_array))]
-	fmt.Println("random_user_agent", user_agent)
-	return user_agent
+	userAgentArray := browserStrings[browserType]
+	userAgent := userAgentArray[rand.Intn(len(userAgentArray))]
+	return userAgent
 }

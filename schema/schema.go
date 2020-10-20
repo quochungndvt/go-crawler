@@ -1,14 +1,15 @@
 package schema
 
 import (
-	"github.com/labstack/echo"
-	gs "github.com/gorilla/schema"
-	"go-crawler/utils"
-	"net/url"
-	"io/ioutil"
 	"encoding/json"
+	"go-crawler/utils"
+	"io/ioutil"
 	"log"
 	"net/http"
+	"net/url"
+
+	gs "github.com/gorilla/schema"
+	"github.com/labstack/echo"
 )
 
 type CustomContext struct {
@@ -18,10 +19,12 @@ type CustomContext struct {
 	method       string
 }
 type RequestData struct {
-	Url         string
-	Method_data string
-	Cookie      string
-	Proxy       string
+	Method     string `json:"method"`
+	URL        string `json:"url"`
+	MethodData string `json:"method_data"`
+	Cookie     string `json:"cookie"`
+	Header     string `json:"header"`
+	Proxy      string `json:"proxy"`
 }
 
 func (c *CustomContext) DoRequire() error {
