@@ -87,7 +87,7 @@ func TestGetContent(t *testing.T) {
 		{"VN", "v41.vietpn.co", "1808"},
 		{"VN", "125.212.251.75", "1808"},
 	}
-	proxy_auth = "francolindef:TWPnBKKQWY5UJWj"
+	proxy_auth = ""
 	for i, proxy := range proxies {
 		if proxy.Region == "VN" {
 			_proxy := fmt.Sprintf("http://%s@%s:%s", proxy_auth, proxy.DNS, proxy.Port)
